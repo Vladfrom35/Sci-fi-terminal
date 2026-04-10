@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sci-Fi Terminal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --term-color: #45C0DC;
+            --term-glow: 0 0 8px rgba(69, 192, 220, 0.7), 0 0 3px rgba(69, 192, 220, 0.5);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background-color: #000;
+            font-family: 'VT323', 'Courier New', monospace;
+            color: var(--term-color);
+            overflow: hidden;
+        }
+        .crt-screen {
+            position: relative; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #04141a 0%, #000000 100%);
+            overflow: hidden;
+        }
+        .crt-content {
+            position: relative; width: 100%; height: 100%;
+            padding: clamp(1rem, 4vh, 3rem) clamp(1rem, 4vw, 3rem);
+            overflow-y: auto; overflow-x: hidden;
+            text-shadow: var(--term-glow);
+            font-size: clamp(12px, min(2.5vw, 4vh), 28px);
+            line-height: 1.2; text-transform: uppercase; z-index: 10;
+        }
+        .crt-screen::before {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(to bottom, rgba(18,16,16,0) 50%, rgba(0,0,0,0.25) 50%);
+            background-size: 100% 4px; z-index: 50; pointer-events: none;
+        }
+        .crt-screen::after {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: rgba(69,192,220,0.03); opacity: 0;
+            z-index: 50; pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+        @keyframes flicker {
+            0%  { opacity: 0.01; }
+            50% { opacity: 0.04; }
+            100%{ opacity: 0.01; }
+        }
+        .header {
+            text-align: center;
+            margin-bottom: clamp(1rem, 3vh, 2rem);
+            white-space: pre-wrap; word-wrap: break-word; line-height: 0.9;
+        }
+        .separator { overflow: hidden; white-space: nowrap; margin-top: 0.5rem; }
+        .terminal-body { text-align: left; max-width: 1000px; margin: 0 auto; width: 100%; }
+        .status-line { min-height: 1.2em; margin-bottom: 0.2rem; display: none; }
+        .main-message-container { margin-top: clamp(1rem, 2vh, 1.5rem); display: none; }
+        .cursor {
+            display: inline-block; width: 0.6em; height: 1em;
+            background-color: var(--term-color); vertical-align: text-bottom;
+            animation: blink 1s step-end infinite; box-shadow: var(--term-glow);
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        #scifi {
+            display: none; width: 100%; height: auto;
+            margin-top: 1.5rem; margin-bottom: 1.5rem;
+            opacity: 0.9; mix-blend-mode: screen;
+        }
+        .reveal-appear { animation: scan-reveal 2s linear forwards; }
+        @keyframes scan-reveal {
+            0%   { clip-path: inset(0 0 100% 0); }
+            100% { clip-path: inset(0 0 0 0); }
+        }
+        @media (max-width: 600px) {
+            .header { text-align: left; }
+            .crt-content { padding: 1.5rem 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="crt-screen">
+        <div class="crt-content">
+            <div class="header">
+                <div>UX/UI INDUSTRIES UNIFIED OPERATION SYSTEM</div>
+                <div>COPYRIGHT 1995-2026 VLADFROM35</div>
+                <div>—Server 1, ver.1.01</div>
+                <div class="separator">====================================================================================================</div>
+            </div>
+            <div class="terminal-body">
+                <div id="status-terminal" class="status-line"></div>
+                <div id="status-profile"  class="status-line"></div>
+                <div id="status-image"    class="status-line"></div>
+                <canvas id="scifi"></canvas>
+                <div id="main-message-container" class="main-message-container">
+                    <span id="typewriter-text" data-text="HELLO, WAKE UP. MY NAME IS VLAD SYMONENKO. I DO COOL THINGS IN DESIGN"></span>
+                    <span id="cursor" class="cursor"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const statusTerminal       = document.getElementById('status-terminal');
+            const statusProfile        = document.getElementById('status-profile');
+            const statusImage          = document.getElementById('status-image');
+            const mainMessageContainer = document.getElementById('main-message-container');
+            const typewriterText       = document.getElementById('typewriter-text');
+            if (!statusTerminal || !typewriterText) return;
+            const finalMessage = typewriterText.getAttribute('data-text');
+
+            const animateProgress = (element, prefixText, delayBeforeStart = 0) => {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        element.style.display = 'block';
+                        let progress = 0;
+                        const interval = setInterval(() => {
+                            progress += Math.floor(Math.random() * 8) + 1;
+                            if (progress >= 100) {
+                                progress = 100;
+                                element.textContent = prefixText + '...' + progress + '%';
+                                clearInterval(interval);
+                                setTimeout(resolve, 300);
+                            } else {
+                                element.textContent = prefixText + '...' + progress + '%';
+                            }
+                        }, 120);
+                    }, delayBeforeStart);
+                });
+            };
+
+            const typeWriter = (element, text) => {
+                return new Promise(resolve => {
+                    mainMessageContainer.style.display = 'block';
+                    let i = 0;
+                    element.textContent = '';
+                    const type = () => {
+                        if (i < text.length) {
+                            element.textContent += text.charAt(i++);
+                            setTimeout(type, Math.floor(Math.random() * 80) + 50);
+                        } else { resolve(); }
+                    };
+                    type();
+                });
+            };
+
+            const loadVisualData = () => {
+                return new Promise(resolve => {
+                    const canvas = document.getElementById('scifi');
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    const img = new Image();
+
+                    img.onload = () => {
+                        canvas.width  = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+
+                        const { data, width, height } = ctx.getImageData(0, 0, img.width, img.height);
+                        const output = ctx.createImageData(width, height);
+
+                        const lineH  = 4;
+                        const gap    = 3;
+                        const thresh = 60;
+                        const bright = 1.6;
+                        const R = 69, G = 192, B = 220;
+
+                        for (let y = 0; y < height; y++) {
+                            const inLine = (y % (lineH + gap)) < lineH;
+                            for (let x = 0; x < width; x++) {
+                                const i = (y * width + x) * 4;
+                                const gray = Math.min(255,
+                                    (0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2]) * bright
+                                );
+                                const t = (gray > thresh && inLine) ? gray / 255 : 0;
+                                output.data[i]   = Math.round(R * t);
+                                output.data[i+1] = Math.round(G * t);
+                                output.data[i+2] = Math.round(B * t);
+                                output.data[i+3] = 255;
+                            }
+                        }
+                        ctx.putImageData(output, 0, 0);
+                        resolve();
+                    };
+
+                    img.onerror = resolve;
+
+                    // ←←← НАЗВА ТВОГО ФАЙЛУ
+                    // Поклади фото в папку images/ поруч з index.html
+                    // і заміни 'photo.jpg' на ім'я свого файлу
+                    img.src = 'images/photo.jpg';
+                });
+            };
+
+            const runSequence = async () => {
+                await animateProgress(statusTerminal, 'Terminal status',        500);
+                await animateProgress(statusProfile,  'Profile status',         200);
+                await animateProgress(statusImage,    'Extracting visual data', 200);
+                await loadVisualData();
+                const canvas = document.getElementById('scifi');
+                canvas.style.display = 'block';
+                canvas.classList.add('reveal-appear');
+                await new Promise(resolve => setTimeout(resolve, 2200));
+                await typeWriter(typewriterText, finalMessage);
+            };
+
+            runSequence();
+        })();
+    </script>
+</body>
+</html>
